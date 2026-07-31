@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "merlab"
+version = "0.1.0"
+description = "A Modular Framework for Multimodal Emotion Recognition Research"
+readme = "README.md"
+authors = [
+    { name = "MER-Lab Contributors" }
+]
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = [
+    "torch>=2.0.0",
+    "pyyaml>=6.0",
+    "numpy>=1.21.0",
+    "tqdm>=4.64.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

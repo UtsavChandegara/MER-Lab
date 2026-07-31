@@ -1,0 +1,43 @@
+# MER-Lab Framework Default Configuration (MER-RULE-034, MER-RULE-124)
+project:
+  name: "MER-Lab-Default-Experiment"
+  seed: 42
+  output_dir: "outputs"
+
+dataset:
+  name: "synthetic_meld"
+  data_dir: "data"
+  batch_size: 16
+  num_workers: 0
+  modalities: ["text", "video"]
+  num_samples: 100
+
+model:
+  fusion_dim: 256
+  encoder:
+    text:
+      name: "mock_text_encoder"
+      raw_dim: 768
+      projection_type: "linear"
+    video:
+      name: "mock_video_encoder"
+      raw_dim: 512
+      projection_type: "linear"
+  fusion:
+    name: "concat_fusion"
+    projection_dim: 256
+  classifier:
+    name: "mlp_classifier"
+    num_classes: 7
+    hidden_dim: 128
+
+training:
+  epochs: 5
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  device: "auto"
+  checkpoint_interval: 1
+
+evaluation:
+  metrics: ["accuracy", "weighted_f1", "macro_f1"]
+  generate_confusion_matrix: true

@@ -12,7 +12,7 @@
 
 **An open-source research framework for conversational Multimodal Emotion Recognition (MER) featuring Dynamic Gated Cross-Attention (DGCA), missing-modality robustness, and zero-cost reproducibility.**
 
-[📖 Academic Paper (LaTeX)](paper/main.tex) • [🚀 Open in Colab](https://colab.research.google.com/github/UtsavChandegara/MER-Lab/blob/main/notebooks/MER_Lab_MELD_Experiments.ipynb) • [📊 View Benchmark Results](outputs/colab_benchmarks/)
+[📖 Academic Paper (LaTeX)](paper/main.tex) • [📘 Architecture & Codebase Guide](ARCHITECTURE.md) • [🚀 Open in Colab](https://colab.research.google.com/github/UtsavChandegara/MER-Lab/blob/main/notebooks/MER_Lab_MELD_Experiments.ipynb) • [📊 View Benchmark Results](outputs/colab_benchmarks/)
 
 </div>
 
@@ -21,6 +21,7 @@
 ## 📌 Table of Contents
 - [🔬 Research Overview](#-research-overview)
 - [🏛️ System Architecture](#️-system-architecture)
+- [📘 Full Architecture & Codebase Guide](ARCHITECTURE.md)
 - [📊 Key Empirical Benchmark Results](#-key-empirical-benchmark-results)
 - [📈 Diagnostic Visualizations](#-diagnostic-visualizations)
 - [🚀 Quickstart & Reproduction](#-quickstart--reproduction)

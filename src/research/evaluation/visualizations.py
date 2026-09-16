@@ -263,6 +263,108 @@ def plot_minority_class_gains(h7_results: Dict[str, Dict[str, Any]], save_dir: P
     return out_path
 
 
+def plot_overfitting_underfitting_dynamics(history: Dict[str, Any], save_dir: Path) -> Path:
+    """Figure 7: Training Dynamics, Overfitting & Underfitting Diagnostic Curves."""
+    _setup_plot_style()
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    train_loss = history.get("train_loss", [])
+    val_loss = history.get("val_loss", [])
+    train_f1 = history.get("train_weighted_f1", history.get("train_accuracy", []))
+    val_f1 = history.get("val_weighted_f1", history.get("val_accuracy", []))
+
+    if not train_loss or not val_loss:
+        return save_dir
+
+    epochs = np.arange(1, len(train_loss) + 1)
+    best_epoch = history.get("best_epoch", int(np.argmax(val_f1) + 1) if val_f1 else 1)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5), dpi=300)
+
+    # Subplot 1: Loss Convergence & Generalization Gap
+    ax1.plot(epochs, train_loss, marker="o", markersize=4, label="Training Loss", color="#1f77b4", linewidth=2)
+    ax1.plot(epochs, val_loss, marker="s", markersize=4, label="Validation Loss", color="#d62728", linewidth=2)
+    ax1.axvline(best_epoch, color="#2ca02c", linestyle="--", linewidth=1.8, label=f"Best Checkpoint (Epoch {best_epoch})")
+    ax1.plot(best_epoch, val_loss[best_epoch - 1], marker="*", markersize=14, color="#ffd700", markeredgecolor="#2ca02c", markeredgewidth=1.5)
+
+    # Shaded Zones: Underfitting and Overfitting
+    if best_epoch > 1:
+        ax1.axvspan(1, best_epoch, alpha=0.08, color="#1f77b4", label="Underfitting / Convergence Zone")
+    if best_epoch < len(epochs):
+        ax1.axvspan(best_epoch, len(epochs), alpha=0.12, color="#d62728", label="Overfitting Regime (Generalization Gap)")
+
+    ax1.set_xlabel("Epoch Number", fontweight="bold")
+    ax1.set_ylabel("Cross-Entropy Loss", fontweight="bold")
+    ax1.set_title("Training vs. Validation Loss (Generalization Gap)", fontweight="bold", pad=10)
+    ax1.legend(loc="upper right", frameon=True, fontsize=8.5)
+    ax1.set_xticks(epochs)
+
+    # Subplot 2: F1 Score Performance Trajectory
+    ax2.plot(epochs, train_f1, marker="o", markersize=4, label="Train Weighted-F1", color="#3b528b", linewidth=2)
+    ax2.plot(epochs, val_f1, marker="^", markersize=4, label="Val Weighted-F1", color="#2ca02c", linewidth=2)
+    ax2.axvline(best_epoch, color="#2ca02c", linestyle="--", linewidth=1.8)
+    ax2.plot(best_epoch, val_f1[best_epoch - 1], marker="*", markersize=14, color="#ffd700", markeredgecolor="#2ca02c", markeredgewidth=1.5, label=f"Peak Val F1 ({val_f1[best_epoch - 1]:.3f})")
+
+    if best_epoch < len(epochs):
+        ax2.axvspan(best_epoch, len(epochs), alpha=0.10, color="#d62728")
+
+    ax2.set_xlabel("Epoch Number", fontweight="bold")
+    ax2.set_ylabel("Weighted F1 Score", fontweight="bold")
+    ax2.set_title("Model F1 Progression & Peak Generalization Point", fontweight="bold", pad=10)
+    ax2.legend(loc="lower right", frameon=True, fontsize=8.5)
+    ax2.set_xticks(epochs)
+
+    fig.suptitle("MER-Lab Diagnostic: Learning Dynamics, Overfitting & Optimal Checkpoint Selection", fontsize=13, fontweight="bold", y=0.98)
+    plt.tight_layout()
+
+    out_path = save_dir / "fig7_overfitting_underfitting_dynamics.png"
+    plt.savefig(out_path, dpi=300, bbox_inches="tight")
+    plt.savefig(save_dir / "fig7_overfitting_underfitting_dynamics.pdf", bbox_inches="tight")
+    plt.close(fig)
+    return out_path
+
+
+def plot_multimodal_learning_curves(histories: Dict[str, Dict[str, Any]], save_dir: Path) -> Path:
+    """Figure 8: Comparative Validation Trajectories across Modality Configurations."""
+    _setup_plot_style()
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5), dpi=300)
+    colors = {"Text-Only": "#1f77b4", "Audio-Only": "#ff7f0e", "Video-Only": "#9467bd", "Trimodal DGCA": "#2ca02c"}
+
+    for name, hist in histories.items():
+        val_loss = hist.get("val_loss", [])
+        val_f1 = hist.get("val_weighted_f1", hist.get("val_accuracy", []))
+        if not val_loss:
+            continue
+        epochs = np.arange(1, len(val_loss) + 1)
+        c = colors.get(name, None)
+        lw = 2.5 if "Trimodal" in name else 1.8
+        ls = "-" if "Trimodal" in name else "--"
+
+        ax1.plot(epochs, val_loss, label=name, color=c, linewidth=lw, linestyle=ls, marker="o", markersize=3.5)
+        ax2.plot(epochs, val_f1, label=name, color=c, linewidth=lw, linestyle=ls, marker="s", markersize=3.5)
+
+    ax1.set_xlabel("Epoch Number", fontweight="bold")
+    ax1.set_ylabel("Validation Loss", fontweight="bold")
+    ax1.set_title("Validation Loss Trajectories across Modalities", fontweight="bold", pad=10)
+    ax1.legend(frameon=True, fontsize=9)
+
+    ax2.set_xlabel("Epoch Number", fontweight="bold")
+    ax2.set_ylabel("Validation Weighted-F1", fontweight="bold")
+    ax2.set_title("Validation F1 Trajectories across Modalities", fontweight="bold", pad=10)
+    ax2.legend(frameon=True, fontsize=9)
+
+    fig.suptitle("Comparative Multimodal Learning Dynamics: Convergence & Stability", fontsize=13, fontweight="bold", y=0.98)
+    plt.tight_layout()
+
+    out_path = save_dir / "fig8_multimodal_learning_curves.png"
+    plt.savefig(out_path, dpi=300, bbox_inches="tight")
+    plt.savefig(save_dir / "fig8_multimodal_learning_curves.pdf", bbox_inches="tight")
+    plt.close(fig)
+    return out_path
+
+
 def render_all_figures(results: Dict[str, Any], save_dir: Path) -> List[Path]:
     """Generates all publication figures from the experiment results dictionary."""
     fig_paths = []
@@ -289,9 +391,26 @@ def render_all_figures(results: Dict[str, Any], save_dir: Path) -> List[Path]:
         p4 = plot_missing_modality_robustness(results["H4_missing_modality_robustness"], figures_dir)
         fig_paths.append(p4)
 
-    # 5. H7 Minority Class Analysis
-    if "H7_per_class_breakdown" in results:
-        p5 = plot_minority_class_gains(results["H7_per_class_breakdown"], figures_dir)
+    # 5. Confusion Matrix (Figure 5)
+    if "confusion_matrix" in results:
+        class_names = results.get("class_names", ["neutral", "surprise", "fear", "sadness", "joy", "disgust", "anger"])
+        p5 = plot_confusion_matrix_heatmap(results["confusion_matrix"], class_names, figures_dir)
         fig_paths.append(p5)
 
+    # 6. H7 Minority Class Analysis
+    if "H7_per_class_breakdown" in results:
+        p6 = plot_minority_class_gains(results["H7_per_class_breakdown"], figures_dir)
+        fig_paths.append(p6)
+
+    # 7. Figure 7: Overfitting & Underfitting Dynamics
+    if "training_history" in results:
+        p7 = plot_overfitting_underfitting_dynamics(results["training_history"], figures_dir)
+        fig_paths.append(p7)
+
+    # 8. Figure 8: Multimodal Learning Curves Comparison
+    if "multimodal_histories" in results:
+        p8 = plot_multimodal_learning_curves(results["multimodal_histories"], figures_dir)
+        fig_paths.append(p8)
+
     return fig_paths
+

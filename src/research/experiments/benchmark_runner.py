@@ -172,6 +172,7 @@ class BenchmarkSuite:
                 if is_trimodal:
                     self.results["training_history"] = history
                     self.results["confusion_matrix"] = metrics.get("confusion_matrix", [])
+                    self.results["class_names"] = self._get_dataset_emotions()
 
                     # Save best trimodal model checkpoint to disk
                     try:

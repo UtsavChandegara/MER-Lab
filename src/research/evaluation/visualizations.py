@@ -195,6 +195,15 @@ def plot_confusion_matrix_heatmap(matrix: List[List[int]], class_names: List[str
     save_dir.mkdir(parents=True, exist_ok=True)
 
     mat = np.array(matrix, dtype=float)
+    if mat.ndim != 2 or mat.shape[0] == 0:
+        return save_dir
+
+    num_c = mat.shape[0]
+    if len(class_names) > num_c:
+        class_names = class_names[:num_c]
+    elif len(class_names) < num_c:
+        class_names = list(class_names) + [f"Class_{k}" for k in range(len(class_names), num_c)]
+
     # Row normalize to get percentages
     row_sums = mat.sum(axis=1, keepdims=True)
     norm_mat = np.divide(mat, row_sums, out=np.zeros_like(mat), where=row_sums != 0)
@@ -270,13 +279,22 @@ def plot_overfitting_underfitting_dynamics(history: Dict[str, Any], save_dir: Pa
 
     train_loss = history.get("train_loss", [])
     val_loss = history.get("val_loss", [])
-    train_f1 = history.get("train_weighted_f1", history.get("train_accuracy", []))
-    val_f1 = history.get("val_weighted_f1", history.get("val_accuracy", []))
+    train_f1 = history.get("train_weighted_f1") or history.get("train_accuracy") or []
+    val_f1 = history.get("val_weighted_f1") or history.get("val_accuracy") or []
 
     if not train_loss or not val_loss:
         return save_dir
 
     epochs = np.arange(1, len(train_loss) + 1)
+    if len(train_f1) != len(epochs):
+        pad_val = train_f1[-1] if train_f1 else 0.0
+        train_f1 = list(train_f1) + [pad_val] * max(0, len(epochs) - len(train_f1))
+        train_f1 = train_f1[:len(epochs)]
+    if len(val_f1) != len(epochs):
+        pad_val = val_f1[-1] if val_f1 else 0.0
+        val_f1 = list(val_f1) + [pad_val] * max(0, len(epochs) - len(val_f1))
+        val_f1 = val_f1[:len(epochs)]
+
     best_epoch = history.get("best_epoch", int(np.argmax(val_f1) + 1) if val_f1 else 1)
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5), dpi=300)
@@ -393,7 +411,19 @@ def render_all_figures(results: Dict[str, Any], save_dir: Path, dataset_name: st
 
     # 5. Confusion Matrix (Figure 5)
     if "confusion_matrix" in results:
-        class_names = results.get("class_names", ["neutral", "surprise", "fear", "sadness", "joy", "disgust", "anger"])
+        class_names = results.get("class_names")
+        if not class_names and "H7_per_class_breakdown" in results:
+            class_names = list(results["H7_per_class_breakdown"].keys())
+        if not class_names:
+            cm = results["confusion_matrix"]
+            num_c = len(cm) if isinstance(cm, list) else 4
+            if num_c == 4:
+                class_names = ["neutral", "happy", "sad", "angry"]
+            elif num_c == 6:
+                class_names = ["happy", "sad", "anger", "fear", "disgust", "surprise"]
+            else:
+                class_names = ["neutral", "surprise", "fear", "sadness", "joy", "disgust", "anger"][:num_c]
+
         p5 = plot_confusion_matrix_heatmap(results["confusion_matrix"], class_names, figures_dir, dataset_name=dataset_name)
         fig_paths.append(p5)
 

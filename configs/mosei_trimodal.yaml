@@ -1,0 +1,53 @@
+# MER-Lab Trimodal CMU-MOSEI Configuration (Text + Audio + Video)
+# Implements Dynamic Gated Cross-Attention Fusion for 6-Class Emotion Recognition (Happy, Sad, Anger, Fear, Disgust, Surprise)
+
+project:
+  name: "MER-MOSEI-Trimodal-DGCA"
+  seed: 42
+  output_dir: "outputs"
+
+dataset:
+  name: "mosei_features"
+  data_dir: "data/mosei"
+  batch_size: 32
+  num_workers: 0
+  modalities: ["text", "audio", "video"]
+  num_samples: null
+
+model:
+  fusion_dim: 256
+  encoder:
+    text:
+      name: "mock_text_encoder"
+      raw_dim: 768
+      projection_type: "linear"
+    audio:
+      name: "mock_audio_encoder"
+      raw_dim: 768
+      projection_type: "linear"
+    video:
+      name: "mock_video_encoder"
+      raw_dim: 512
+      projection_type: "linear"
+  fusion:
+    name: "dynamic_gated_cross_attention"
+    projection_dim: 256
+    num_heads: 4
+    dim_feedforward: 512
+    dropout: 0.1
+    modality_dropout: 0.15
+  classifier:
+    name: "mlp_classifier"
+    num_classes: 6
+    hidden_dim: 128
+
+training:
+  epochs: 10
+  learning_rate: 0.0005
+  weight_decay: 0.0001
+  device: "auto"
+  checkpoint_interval: 1
+
+evaluation:
+  metrics: ["accuracy", "weighted_f1", "macro_f1"]
+  generate_confusion_matrix: true

@@ -45,8 +45,15 @@ def main():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/default.yaml",
+        default=None,
         help="Path to experiment YAML configuration file.",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        choices=["meld", "iemocap", "mosei"],
+        default=None,
+        help="Quick switch to run MELD (7-class), IEMOCAP (4-class), or CMU-MOSEI (6-class).",
     )
     parser.add_argument(
         "--verify",
@@ -60,9 +67,20 @@ def main():
         success = verify_infrastructure()
         sys.exit(0 if success else 1)
 
-    logger.info(f"Starting MER-Lab experiment runner with config: '{args.config}'")
+    # Determine config file based on --dataset or --config
+    config_path = args.config
+    if args.dataset == "meld":
+        config_path = "configs/meld_trimodal.yaml"
+    elif args.dataset == "iemocap":
+        config_path = "configs/iemocap_trimodal.yaml"
+    elif args.dataset == "mosei":
+        config_path = "configs/mosei_trimodal.yaml"
+    elif config_path is None:
+        config_path = "configs/default.yaml"
+
+    logger.info(f"Starting MER-Lab experiment runner with config: '{config_path}' (Dataset: {args.dataset or 'config-specified'})")
     try:
-        runner = ExperimentRunner(args.config)
+        runner = ExperimentRunner(config_path)
         metrics = runner.run()
         print("\n================ FINAL EXPERIMENT RESULTS ================")
         print(f"Accuracy   : {metrics.get('accuracy', 0.0):.4f}")

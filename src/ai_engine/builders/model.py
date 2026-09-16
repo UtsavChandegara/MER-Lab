@@ -86,3 +86,9 @@ class MERModel(nn.Module):
         # 4. Classifier
         logits = self.classifier(fused_representation)
         return logits
+
+    @property
+    def num_classes(self) -> int:
+        """Exposes the classifier's number of emotion classes."""
+        return self.classifier.num_classes
+

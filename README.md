@@ -4,9 +4,9 @@
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/UtsavChandegara/MER-Lab/blob/main/notebooks/MER_Lab_MELD_Experiments.ipynb)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg?logo=pytorch&logoColor=white)](https://pytorch.org)
-[![Tests](https://img.shields.io/badge/tests-27%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-33%20passing-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Dataset: MELD](https://img.shields.io/badge/Dataset-MELD%20(7--Class)-blue.svg)](https://github.com/declare-lab/MELD)
+[![Datasets](https://img.shields.io/badge/Datasets-MELD%20%7C%20IEMOCAP%20%7C%20MOSEI-blue.svg)]()
 [![Model Size](https://img.shields.io/badge/Model%20Size-1.42M%20params-informational.svg)]()
 [![Inference Latency](https://img.shields.io/badge/Latency-2.85%20ms-success.svg)]()
 
@@ -162,9 +162,12 @@ cd MER-Lab
 pip install torch transformers pyyaml tqdm matplotlib seaborn scikit-learn
 
 # 3. Download & Prepare MELD Data
-python scripts/prepare_meld_data.py --output_dir data/meld
+# 3. Run on your choice of dataset:
+python main.py --dataset meld      # Run MELD Trimodal DGCA (7-Class)
+python main.py --dataset iemocap   # Run IEMOCAP Trimodal DGCA (4-Class)
+python main.py --dataset mosei     # Run CMU-MOSEI Trimodal DGCA (6-Class)
 
-# 4. Run the Full Hypothesis Benchmark Suite (H1-H7)
+# 4. Or run the full MELD Hypothesis Benchmark Suite (H1-H7)
 python src/research/experiments/benchmark_runner.py --config configs/meld_trimodal.yaml --output_dir outputs/benchmarks
 ```
 
@@ -189,7 +192,7 @@ python3 -m unittest discover -s tests -p "test_*.py"
 ```
 
 ```text
-Ran 27 tests in 9.219s
+Ran 33 tests in 18.9s
 
 OK
 ```

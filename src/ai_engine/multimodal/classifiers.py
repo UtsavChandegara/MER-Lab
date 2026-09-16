@@ -15,7 +15,7 @@ from src.ai_engine.multimodal.registry import classifier_registry
 class MLPClassifier(BaseClassifier):
     """MLP Emotion Classifier with LayerNorm, Dropout, and non-linear activations."""
 
-    def __init__(self, input_dim: int = 256, num_classes: int = 7, hidden_dim: int = 128, dropout: float = 0.1):
+    def __init__(self, input_dim: int = 256, num_classes: int = 7, hidden_dim: int = 128, dropout: float = 0.1, **kwargs):
         super().__init__()
         self._input_dim = input_dim
         self._num_classes = num_classes
@@ -45,7 +45,7 @@ class MLPClassifier(BaseClassifier):
 class LinearClassifier(BaseClassifier):
     """Linear Emotion Classifier mapping fused features directly to emotion logits."""
 
-    def __init__(self, input_dim: int = 256, num_classes: int = 7):
+    def __init__(self, input_dim: int = 256, num_classes: int = 7, **kwargs):
         super().__init__()
         self._input_dim = input_dim
         self._num_classes = num_classes

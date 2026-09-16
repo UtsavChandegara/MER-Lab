@@ -72,13 +72,15 @@ class ModelBuilder:
         classifier_cfg = config["model"]["classifier"]
         classifier_name = classifier_cfg["name"]
         num_classes = classifier_cfg.get("num_classes", 7)
-        hidden_dim = classifier_cfg.get("hidden_dim", 128)
+        classifier_kwargs = {k: v for k, v in classifier_cfg.items() if k not in ["name", "num_classes"]}
+        if classifier_name in ["mlp", "mlp_classifier"] and "hidden_dim" not in classifier_kwargs:
+            classifier_kwargs["hidden_dim"] = 128
 
         classifier_module: BaseClassifier = classifier_registry.build(
             classifier_name,
             input_dim=fusion_module.output_dim,
             num_classes=num_classes,
-            hidden_dim=hidden_dim,
+            **classifier_kwargs,
         )
         logger.info(f"Configured Classifier Module: '{classifier_name}' (NumClasses={num_classes})")
 

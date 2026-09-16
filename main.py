@@ -56,6 +56,17 @@ def main():
         help="Quick switch to run MELD (7-class), IEMOCAP (4-class), or CMU-MOSEI (6-class).",
     )
     parser.add_argument(
+        "--web",
+        action="store_true",
+        help="Launch the interactive MER-Lab Web Studio & Dashboard GUI.",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port number for the Web Studio (default: 8000).",
+    )
+    parser.add_argument(
         "--verify",
         action="store_true",
         help="Verify framework infrastructure readiness and exit (MER-RULE-208).",
@@ -66,6 +77,12 @@ def main():
     if args.verify:
         success = verify_infrastructure()
         sys.exit(0 if success else 1)
+
+    if args.web:
+        import uvicorn
+        logger.info(f"Launching MER-Lab Web Studio at http://localhost:{args.port}...")
+        uvicorn.run("app:app", host="0.0.0.0", port=args.port, reload=False)
+        sys.exit(0)
 
     # Determine config file based on --dataset or --config
     config_path = args.config

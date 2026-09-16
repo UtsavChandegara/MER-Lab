@@ -383,9 +383,11 @@ class BenchmarkSuite:
         batch_size = 1
         encoder_cfgs = self.base_config.get("model.encoder", {})
         dummy_inputs = {}
-        for m, mcfg in encoder_cfgs.items():
-            dim = mcfg.get("native_dim", 768)
-            dummy_inputs[m] = torch.randn(batch_size, dim, device=device)
+        for m, enc in model.encoders.items():
+            dim = getattr(enc, "_native_dim", getattr(enc, "output_dim", None))
+            if dim is None and m in encoder_cfgs:
+                dim = encoder_cfgs[m].get("raw_dim", encoder_cfgs[m].get("native_dim", 768))
+            dummy_inputs[m] = torch.randn(batch_size, dim or 768, device=device)
         if not dummy_inputs:
             dummy_inputs = {
                 "text": torch.randn(batch_size, 768, device=device),

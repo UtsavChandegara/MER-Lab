@@ -81,7 +81,7 @@ class BenchmarkSuite:
         optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-6)
 
-        # Calculate balanced class weights to counter MELD class imbalance
+        # Calculate balanced class weights to counter dataset class imbalance
         cw = None
         try:
             train_labels = getattr(train_dataset, "labels", None)
@@ -89,7 +89,8 @@ class BenchmarkSuite:
                 if not isinstance(train_labels, torch.Tensor):
                     train_labels = torch.tensor(train_labels)
                 from src.training.losses import compute_class_weights
-                cw = compute_class_weights(train_labels.long()).to(device)
+                num_classes = getattr(train_dataset, "num_classes", None) or cfg.get("model.classifier.num_classes", None)
+                cw = compute_class_weights(train_labels.long(), num_classes=num_classes).to(device)
         except Exception:
             cw = None
 
@@ -182,7 +183,7 @@ class BenchmarkSuite:
                             "config": cfg_dict,
                             "metrics": metrics,
                             "best_epoch": history.get("best_epoch", 1),
-                            "emotions": ["neutral", "surprise", "fear", "sadness", "joy", "disgust", "anger"],
+                            "emotions": self._get_dataset_emotions(),
                         }, model_path)
                         logger.info(f"Successfully saved best trimodal model checkpoint to: '{model_path}'")
                     except Exception as e:
@@ -207,11 +208,20 @@ class BenchmarkSuite:
         self.results["multimodal_histories"] = multimodal_histories
         return h1_results
 
+    def _get_dataset_emotions(self) -> List[str]:
+        """Returns the list of emotion names from the configured dataset."""
+        dataset_name = self.base_config.get("dataset.name", "meld_features")
+        try:
+            dataset_cls = dataset_registry.get(dataset_name)
+            return list(getattr(dataset_cls, "EMOTIONS", ["neutral", "surprise", "fear", "sadness", "joy", "disgust", "anger"]))
+        except Exception:
+            return ["neutral", "surprise", "fear", "sadness", "joy", "disgust", "anger"]
+
     def _extract_dynamic_gating_weights(self, model: torch.nn.Module, val_loader: DataLoader) -> Dict[str, Dict[str, float]]:
         """Extracts average dynamic gating weights (α) per emotion category."""
         device = next(model.parameters()).device
         model.eval()
-        emotions = ["neutral", "surprise", "fear", "sadness", "joy", "disgust", "anger"]
+        emotions = self._get_dataset_emotions()
         class_gating_sums = {e: [0.0, 0.0, 0.0] for e in emotions}
         class_counts = {e: 0 for e in emotions}
 
@@ -327,7 +337,7 @@ class BenchmarkSuite:
     def run_h7_per_class_breakdown(self) -> Dict[str, Any]:
         """H7: Detailed per-class F1 breakdown comparing Unimodal vs Trimodal."""
         logger.info("================ EVALUATING H7: CLASS-LEVEL BREAKDOWN ================")
-        emotions = ["neutral", "surprise", "fear", "sadness", "joy", "disgust", "anger"]
+        emotions = self._get_dataset_emotions()
         
         # Train Unimodal Text
         cfg_text = copy.deepcopy(self.base_config.to_dict())

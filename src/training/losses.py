@@ -22,9 +22,15 @@ class EmotionCrossEntropyLoss(nn.Module):
         return self.criterion(logits, targets)
 
 
-def compute_class_weights(labels: torch.Tensor, num_classes: int = 7) -> torch.Tensor:
+def compute_class_weights(labels: torch.Tensor, num_classes: Optional[int] = None) -> torch.Tensor:
     """Computes balanced class weights inverse to class frequency to mitigate class imbalance."""
+    if num_classes is None:
+        num_classes = int(labels.max().item() + 1) if labels.numel() > 0 else 7
+        num_classes = max(num_classes, 1)
+
     counts = torch.bincount(labels, minlength=num_classes).float()
+    if counts.numel() > num_classes:
+        counts = counts[:num_classes]
     total = labels.numel()
     # Avoid division by zero for classes with 0 count
     weights = total / (num_classes * torch.clamp(counts, min=1.0))

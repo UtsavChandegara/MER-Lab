@@ -172,6 +172,22 @@ class BenchmarkSuite:
                     self.results["training_history"] = history
                     self.results["confusion_matrix"] = metrics.get("confusion_matrix", [])
 
+                    # Save best trimodal model checkpoint to disk
+                    try:
+                        checkpoint_dir = self.output_dir / "checkpoints"
+                        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+                        model_path = checkpoint_dir / "best_trimodal_model.pt"
+                        torch.save({
+                            "model_state_dict": model.state_dict(),
+                            "config": cfg_dict,
+                            "metrics": metrics,
+                            "best_epoch": history.get("best_epoch", 1),
+                            "emotions": ["neutral", "surprise", "fear", "sadness", "joy", "disgust", "anger"],
+                        }, model_path)
+                        logger.info(f"Successfully saved best trimodal model checkpoint to: '{model_path}'")
+                    except Exception as e:
+                        logger.warning(f"Could not save model checkpoint: {str(e)}")
+
                     # Compute dynamic gating weights per emotion class for Figure 3
                     try:
                         per_class_gating = self._extract_dynamic_gating_weights(model, val_loader)

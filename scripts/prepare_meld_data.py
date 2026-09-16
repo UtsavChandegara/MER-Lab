@@ -74,7 +74,7 @@ def parse_meld_csv(csv_path: Path) -> Tuple[List[str], List[int], List[str]]:
     return utterances, labels, sample_ids
 
 
-def extract_roberta_embeddings(texts: List[str], device: torch.device, batch_size: int = 64) -> torch.Tensor:
+def extract_roberta_embeddings(texts: List[str], device: torch.device, batch_size: int = None) -> torch.Tensor:
     """Extracts 768-dim utterance embeddings using pre-trained RoBERTa."""
     try:
         from transformers import AutoTokenizer, AutoModel
@@ -83,14 +83,33 @@ def extract_roberta_embeddings(texts: List[str], device: torch.device, batch_siz
         g = torch.Generator().manual_seed(len(texts))
         return torch.randn(len(texts), 768, generator=g)
 
-    print(f"Loading pre-trained 'roberta-base' on {device}...")
+    # Auto-tune batch size based on device
+    if batch_size is None:
+        batch_size = 128 if device.type == "cuda" else 32
+
+    if device.type == "cpu":
+        import os
+        num_th = min(os.cpu_count() or 4, 8)
+        torch.set_num_threads(num_th)
+        print(f"\n⚡ Notice: Processing on CPU ({num_th} threads). For 20x faster extraction (~25s):")
+        print("   👉 Colab: Runtime -> Change runtime type -> Hardware accelerator -> T4 GPU\n")
+
+    print(f"Loading pre-trained 'roberta-base' on {device} (batch_size={batch_size})...")
     tokenizer = AutoTokenizer.from_pretrained("roberta-base")
     model = AutoModel.from_pretrained("roberta-base").to(device)
     model.eval()
 
     all_embeds = []
-    with torch.no_grad():
-        for i in range(0, len(texts), batch_size):
+    try:
+        from tqdm.auto import tqdm
+        batches = list(range(0, len(texts), batch_size))
+        pbar = tqdm(batches, desc=f"Extracting RoBERTa ({device})", unit="batch", leave=True)
+    except ImportError:
+        batches = list(range(0, len(texts), batch_size))
+        pbar = batches
+
+    with torch.inference_mode():
+        for i in pbar:
             batch_texts = texts[i : i + batch_size]
             encoded = tokenizer(
                 batch_texts,
@@ -184,6 +203,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Prepare Real MELD Dataset")
     parser.add_argument("--output_dir", type=str, default="data/meld")
     parser.add_argument("--max_samples", type=int, default=None)
+    parser.add_argument("--quick", action="store_true", help="Extract fast 1,000 sample subset for testing")
     args = parser.parse_args()
 
-    prepare_meld(output_dir=args.output_dir, max_samples_per_split=args.max_samples)
+    max_samples = 1000 if args.quick and args.max_samples is None else args.max_samples
+    prepare_meld(output_dir=args.output_dir, max_samples_per_split=max_samples)

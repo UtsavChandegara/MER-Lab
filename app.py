@@ -245,7 +245,7 @@ def _async_train_worker(req: TrainingRequest):
             try:
                 train_labels = getattr(train_dataset, "labels", None)
                 if train_labels is not None:
-                    num_classes = getattr(train_dataset, "num_classes", None) or len(meta["classes"])
+                    num_classes = getattr(model, "num_classes", None) or getattr(train_dataset, "num_classes", None) or len(meta["classes"])
                     cw = compute_class_weights(train_labels.long(), num_classes=num_classes).to(device)
             except Exception:
                 cw = None

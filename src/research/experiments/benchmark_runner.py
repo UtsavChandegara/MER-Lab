@@ -81,7 +81,7 @@ class BenchmarkSuite:
         optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-6)
 
-        # Calculate balanced class weights to counter dataset class imbalance
+        # Loss function with dynamic class weighting
         cw = None
         try:
             train_labels = getattr(train_dataset, "labels", None)
@@ -89,7 +89,7 @@ class BenchmarkSuite:
                 if not isinstance(train_labels, torch.Tensor):
                     train_labels = torch.tensor(train_labels)
                 from src.training.losses import compute_class_weights
-                num_classes = getattr(train_dataset, "num_classes", None) or cfg.get("model.classifier.num_classes", None)
+                num_classes = getattr(model, "num_classes", None) or getattr(train_dataset, "num_classes", None) or cfg.get("model.classifier.num_classes", None)
                 cw = compute_class_weights(train_labels.long(), num_classes=num_classes).to(device)
         except Exception:
             cw = None
@@ -212,18 +212,29 @@ class BenchmarkSuite:
     def _get_dataset_emotions(self) -> List[str]:
         """Returns the list of emotion names from the configured dataset."""
         dataset_name = self.base_config.get("dataset.name", "meld_features")
+        num_classes = self.base_config.get("model.classifier.num_classes", None)
         try:
             dataset_cls = dataset_registry.get(dataset_name)
-            return list(getattr(dataset_cls, "EMOTIONS", ["neutral", "surprise", "fear", "sadness", "joy", "disgust", "anger"]))
+            emotions = getattr(dataset_cls, "EMOTIONS", None)
+            if emotions:
+                return list(emotions)
         except Exception:
+            pass
+        if num_classes == 4:
+            return ["neutral", "happy", "sad", "angry"]
+        elif num_classes == 6:
+            return ["happy", "sad", "anger", "fear", "disgust", "surprise"]
+        elif num_classes == 7 or num_classes is None:
             return ["neutral", "surprise", "fear", "sadness", "joy", "disgust", "anger"]
+        return [f"Class_{i}" for i in range(num_classes)]
 
     def _extract_dynamic_gating_weights(self, model: torch.nn.Module, val_loader: DataLoader) -> Dict[str, Dict[str, float]]:
         """Extracts average dynamic gating weights (α) per emotion category."""
         device = next(model.parameters()).device
         model.eval()
         emotions = self._get_dataset_emotions()
-        class_gating_sums = {e: [0.0, 0.0, 0.0] for e in emotions}
+        modalities = list(self.base_config.get("dataset.modalities", ["text", "audio", "video"]))
+        class_gating_sums = {e: [0.0] * len(modalities) for e in emotions}
         class_counts = {e: 0 for e in emotions}
 
         with torch.no_grad():
@@ -238,18 +249,16 @@ class BenchmarkSuite:
                     for w, t in zip(weights, targets):
                         if 0 <= t < len(emotions):
                             e = emotions[t]
-                            class_gating_sums[e][0] += float(w[0])
-                            class_gating_sums[e][1] += float(w[1])
-                            class_gating_sums[e][2] += float(w[2])
+                            for m_idx in range(min(len(w), len(modalities))):
+                                class_gating_sums[e][m_idx] += float(w[m_idx])
                             class_counts[e] += 1
 
         out = {}
         for e in emotions:
             cnt = max(class_counts[e], 1)
             out[e] = {
-                "text": round(class_gating_sums[e][0] / cnt, 3),
-                "audio": round(class_gating_sums[e][1] / cnt, 3),
-                "video": round(class_gating_sums[e][2] / cnt, 3),
+                mod: round(class_gating_sums[e][m_idx] / cnt, 3)
+                for m_idx, mod in enumerate(modalities)
             }
         return out
 

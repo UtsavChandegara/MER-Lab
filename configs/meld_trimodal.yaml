@@ -12,7 +12,7 @@ dataset:
   batch_size: 32
   num_workers: 0
   modalities: ["text", "audio", "video"]
-  num_samples: 500
+  num_samples: null
 
 model:
   fusion_dim: 256

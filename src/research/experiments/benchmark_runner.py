@@ -53,15 +53,16 @@ class BenchmarkSuite:
 
         dataset_cls = dataset_registry.get(cfg.get("dataset.name", "meld_features"))
         data_dir = cfg.get("dataset.data_dir", "data/meld")
-        num_samples = cfg.get("dataset.num_samples", 500)
+        num_samples = cfg.get("dataset.num_samples", None)
         batch_size = cfg.get("dataset.batch_size", 32)
+        val_samples = max(num_samples // 4, 20) if num_samples is not None else None
 
         try:
             train_dataset = dataset_cls(data_dir=data_dir, split="train", num_samples=num_samples, seed=seed)
-            val_dataset = dataset_cls(data_dir=data_dir, split="dev", num_samples=max(num_samples // 4, 20), seed=seed + 1)
+            val_dataset = dataset_cls(data_dir=data_dir, split="dev", num_samples=val_samples, seed=seed + 1)
         except TypeError:
-            train_dataset = dataset_cls(num_samples=num_samples, seed=seed)
-            val_dataset = dataset_cls(num_samples=max(num_samples // 4, 20), seed=seed + 1)
+            train_dataset = dataset_cls(num_samples=num_samples or 500, seed=seed)
+            val_dataset = dataset_cls(num_samples=val_samples or 100, seed=seed + 1)
 
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_multimodal_batch)
         val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_multimodal_batch)

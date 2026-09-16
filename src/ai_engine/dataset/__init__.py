@@ -2,7 +2,11 @@
 
 from src.ai_engine.dataset.contracts import BaseDataset, MultimodalSample, MultimodalBatch
 from src.ai_engine.dataset.registry import dataset_registry
-from src.ai_engine.dataset.components import SyntheticMELDDataset, collate_multimodal_batch
+from src.ai_engine.dataset.components import (
+    SyntheticMELDDataset,
+    MELDFeatureDataset,
+    collate_multimodal_batch,
+)
 
 __all__ = [
     "BaseDataset",
@@ -10,5 +14,6 @@ __all__ = [
     "MultimodalBatch",
     "dataset_registry",
     "SyntheticMELDDataset",
+    "MELDFeatureDataset",
     "collate_multimodal_batch",
 ]

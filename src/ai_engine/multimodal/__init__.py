@@ -2,7 +2,13 @@
 
 from src.ai_engine.multimodal.contracts import BaseFusion, BaseClassifier
 from src.ai_engine.multimodal.registry import fusion_registry, classifier_registry
-from src.ai_engine.multimodal.fusion import ConcatFusion, AttentionFusion, GatedFusion
+from src.ai_engine.multimodal.fusion import (
+    ConcatFusion,
+    AttentionFusion,
+    GatedFusion,
+    AverageFusion,
+    DynamicGatedCrossAttentionFusion,
+)
 from src.ai_engine.multimodal.classifiers import MLPClassifier, LinearClassifier
 
 __all__ = [
@@ -13,6 +19,8 @@ __all__ = [
     "ConcatFusion",
     "AttentionFusion",
     "GatedFusion",
+    "AverageFusion",
+    "DynamicGatedCrossAttentionFusion",
     "MLPClassifier",
     "LinearClassifier",
 ]

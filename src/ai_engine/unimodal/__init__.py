@@ -2,7 +2,7 @@
 
 from src.ai_engine.unimodal.contracts import BaseEncoder, BaseProjection
 from src.ai_engine.unimodal.registry import encoder_registry, projection_registry
-from src.ai_engine.unimodal.encoders import MockTextEncoder, MockVideoEncoder
+from src.ai_engine.unimodal.encoders import MockTextEncoder, MockVideoEncoder, MockAudioEncoder, FeatureEncoder
 from src.ai_engine.unimodal.projections import LinearProjection, MLPProjection, IdentityProjection
 
 __all__ = [
@@ -12,6 +12,8 @@ __all__ = [
     "projection_registry",
     "MockTextEncoder",
     "MockVideoEncoder",
+    "MockAudioEncoder",
+    "FeatureEncoder",
     "LinearProjection",
     "MLPProjection",
     "IdentityProjection",

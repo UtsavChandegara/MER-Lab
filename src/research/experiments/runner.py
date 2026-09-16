@@ -62,8 +62,12 @@ class ExperimentRunner:
         dataset_cls = dataset_registry.get(dataset_name)
         
         # Instantiate train and validation dataset splits
-        train_dataset = dataset_cls(num_samples=num_samples, seed=seed)
-        val_dataset = dataset_cls(num_samples=max(num_samples // 4, 10), seed=seed + 1)
+        try:
+            train_dataset = dataset_cls(data_dir=data_dir, split="train", num_samples=num_samples, seed=seed)
+            val_dataset = dataset_cls(data_dir=data_dir, split="dev", num_samples=max(num_samples // 4, 10), seed=seed + 1)
+        except TypeError:
+            train_dataset = dataset_cls(num_samples=num_samples, seed=seed)
+            val_dataset = dataset_cls(num_samples=max(num_samples // 4, 10), seed=seed + 1)
 
         train_loader = DataLoader(
             train_dataset,

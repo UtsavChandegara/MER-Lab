@@ -63,3 +63,51 @@ class MockVideoEncoder(BaseEncoder):
     @property
     def modality(self) -> str:
         return "video"
+
+
+@encoder_registry.register("mock_audio_encoder")
+class MockAudioEncoder(BaseEncoder):
+    """Mock audio encoder returning native 768-dimensional acoustic representations (e.g. WavLM)."""
+
+    def __init__(self, native_dim: int = 768):
+        super().__init__()
+        self._native_dim = native_dim
+        self._proj = nn.Linear(native_dim, native_dim)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        # Expects inputs of shape [Batch, Native_Dim] or [Batch, Time, Dim]
+        if inputs.dim() == 3:
+            inputs = inputs.mean(dim=1)  # Temporal acoustic pooling
+        return self._proj(inputs)
+
+    @property
+    def output_dim(self) -> int:
+        return self._native_dim
+
+    @property
+    def modality(self) -> str:
+        return "audio"
+
+
+@encoder_registry.register("feature_encoder")
+class FeatureEncoder(BaseEncoder):
+    """Generic encoder for pre-extracted feature tensors (RoBERTa, WavLM, CLIP)."""
+
+    def __init__(self, native_dim: int = 768, modality: str = "generic"):
+        super().__init__()
+        self._native_dim = native_dim
+        self._modality = modality
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        if inputs.dim() == 3:
+            inputs = inputs.mean(dim=1)
+        return inputs
+
+    @property
+    def output_dim(self) -> int:
+        return self._native_dim
+
+    @property
+    def modality(self) -> str:
+        return self._modality
+

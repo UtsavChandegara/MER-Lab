@@ -60,9 +60,11 @@ class ModelBuilder:
         # 2. Build Fusion Module
         fusion_cfg = config["model"]["fusion"]
         fusion_name = fusion_cfg["name"]
+        fusion_kwargs = {k: v for k, v in fusion_cfg.items() if k not in ["name", "projection_dim"]}
         fusion_module: BaseFusion = fusion_registry.build(
             fusion_name,
             projection_dim=fusion_dim,
+            **fusion_kwargs,
         )
         logger.info(f"Configured Fusion Module: '{fusion_name}' (InputDim={fusion_dim}, OutputDim={fusion_module.output_dim})")
 

@@ -112,7 +112,7 @@ def plot_fusion_comparison(h2_results: Dict[str, Dict[str, float]], save_dir: Pa
     return out_path
 
 
-def plot_dynamic_gating_heatmap(per_class_gating: Dict[str, Dict[str, float]], save_dir: Path) -> Path:
+def plot_dynamic_gating_heatmap(per_class_gating: Dict[str, Dict[str, float]], save_dir: Path, dataset_name: str = "MELD") -> Path:
     """Figure 3: Dynamic Gating Modality Weights per Emotion Class (H3, H5)."""
     _setup_plot_style()
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -134,7 +134,7 @@ def plot_dynamic_gating_heatmap(per_class_gating: Dict[str, Dict[str, float]], s
     ax.set_yticks(np.arange(len(classes)))
     ax.set_xticklabels([m.capitalize() for m in modalities], fontweight="bold")
     ax.set_yticklabels([c.capitalize() for c in classes])
-    ax.set_title("H3: Adaptive Modality Gating Weights (α) by Emotion Class", fontweight="bold", pad=12)
+    ax.set_title(f"H3: Adaptive Modality Gating Weights (α) by Emotion Class on {dataset_name}", fontweight="bold", pad=12)
 
     # Print numerical values inside heatmap cells
     for i in range(len(classes)):
@@ -151,7 +151,7 @@ def plot_dynamic_gating_heatmap(per_class_gating: Dict[str, Dict[str, float]], s
     return out_path
 
 
-def plot_missing_modality_robustness(h4_results: Dict[str, Dict[str, float]], save_dir: Path) -> Path:
+def plot_missing_modality_robustness(h4_results: Dict[str, Dict[str, float]], save_dir: Path, dataset_name: str = "MELD") -> Path:
     """Figure 4: Missing Modality Robustness Degradation (H4)."""
     _setup_plot_style()
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -173,7 +173,7 @@ def plot_missing_modality_robustness(h4_results: Dict[str, Dict[str, float]], sa
     ax.set_yticks(y_pos)
     ax.set_yticklabels(conditions)
     ax.set_xlabel("Macro-F1 Score")
-    ax.set_title("H4: Model Robustness Under Modality Occlusion / Missingness", fontweight="bold", pad=12)
+    ax.set_title(f"H4: Model Robustness Under Modality Occlusion / Missingness on {dataset_name}", fontweight="bold", pad=12)
     ax.set_xlim(0.0, 1.05)
 
     for bar in bars:
@@ -229,7 +229,7 @@ def plot_confusion_matrix_heatmap(matrix: List[List[int]], class_names: List[str
     return out_path
 
 
-def plot_minority_class_gains(h7_results: Dict[str, Dict[str, Any]], save_dir: Path) -> Path:
+def plot_minority_class_gains(h7_results: Dict[str, Dict[str, Any]], save_dir: Path, dataset_name: str = "MELD") -> Path:
     """Figure 6: Per-Class F1 Delta Gain (H7: Highlighting gains on minority emotions)."""
     _setup_plot_style()
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -247,7 +247,7 @@ def plot_minority_class_gains(h7_results: Dict[str, Dict[str, Any]], save_dir: P
     ax.set_xticks(x)
     ax.set_xticklabels([c.capitalize() for c in classes], rotation=25, ha="right")
     ax.set_ylabel("Absolute F1 Gain (Trimodal − Text-Only)")
-    ax.set_title("H7: Multimodal Value-Add Across Emotion Categories", fontweight="bold", pad=12)
+    ax.set_title(f"H7: Multimodal Value-Add Across Emotion Categories on {dataset_name}", fontweight="bold", pad=12)
 
     for bar in bars:
         h = bar.get_height()
@@ -263,7 +263,7 @@ def plot_minority_class_gains(h7_results: Dict[str, Dict[str, Any]], save_dir: P
     return out_path
 
 
-def plot_overfitting_underfitting_dynamics(history: Dict[str, Any], save_dir: Path) -> Path:
+def plot_overfitting_underfitting_dynamics(history: Dict[str, Any], save_dir: Path, dataset_name: str = "MELD") -> Path:
     """Figure 7: Training Dynamics, Overfitting & Underfitting Diagnostic Curves."""
     _setup_plot_style()
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -314,7 +314,7 @@ def plot_overfitting_underfitting_dynamics(history: Dict[str, Any], save_dir: Pa
     ax2.legend(loc="lower right", frameon=True, fontsize=8.5)
     ax2.set_xticks(epochs)
 
-    fig.suptitle("MER-Lab Diagnostic: Learning Dynamics, Overfitting & Optimal Checkpoint Selection", fontsize=13, fontweight="bold", y=0.98)
+    fig.suptitle(f"Generalization Dynamics & Optimal Checkpoint Selection on {dataset_name}", fontsize=13, fontweight="bold", y=0.98)
     plt.tight_layout()
 
     out_path = save_dir / "fig7_overfitting_underfitting_dynamics.png"
@@ -324,7 +324,7 @@ def plot_overfitting_underfitting_dynamics(history: Dict[str, Any], save_dir: Pa
     return out_path
 
 
-def plot_multimodal_learning_curves(histories: Dict[str, Dict[str, Any]], save_dir: Path) -> Path:
+def plot_multimodal_learning_curves(histories: Dict[str, Dict[str, Any]], save_dir: Path, dataset_name: str = "MELD") -> Path:
     """Figure 8: Comparative Validation Trajectories across Modality Configurations."""
     _setup_plot_style()
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -355,7 +355,7 @@ def plot_multimodal_learning_curves(histories: Dict[str, Dict[str, Any]], save_d
     ax2.set_title("Validation F1 Trajectories across Modalities", fontweight="bold", pad=10)
     ax2.legend(frameon=True, fontsize=9)
 
-    fig.suptitle("Comparative Multimodal Learning Dynamics: Convergence & Stability", fontsize=13, fontweight="bold", y=0.98)
+    fig.suptitle(f"Comparative Multimodal Learning Dynamics on {dataset_name}: Convergence & Stability", fontsize=13, fontweight="bold", y=0.98)
     plt.tight_layout()
 
     out_path = save_dir / "fig8_multimodal_learning_curves.png"
@@ -383,12 +383,12 @@ def render_all_figures(results: Dict[str, Any], save_dir: Path, dataset_name: st
 
     # 3. H3 Dynamic Gating (if gating data present)
     if "H3_dynamic_gating" in results and "per_class_gating" in results["H3_dynamic_gating"]:
-        p3 = plot_dynamic_gating_heatmap(results["H3_dynamic_gating"]["per_class_gating"], figures_dir)
+        p3 = plot_dynamic_gating_heatmap(results["H3_dynamic_gating"]["per_class_gating"], figures_dir, dataset_name=dataset_name)
         fig_paths.append(p3)
 
     # 4. H4 Missing Modality
     if "H4_missing_modality_robustness" in results:
-        p4 = plot_missing_modality_robustness(results["H4_missing_modality_robustness"], figures_dir)
+        p4 = plot_missing_modality_robustness(results["H4_missing_modality_robustness"], figures_dir, dataset_name=dataset_name)
         fig_paths.append(p4)
 
     # 5. Confusion Matrix (Figure 5)
@@ -399,17 +399,17 @@ def render_all_figures(results: Dict[str, Any], save_dir: Path, dataset_name: st
 
     # 6. H7 Minority Class Analysis
     if "H7_per_class_breakdown" in results:
-        p6 = plot_minority_class_gains(results["H7_per_class_breakdown"], figures_dir)
+        p6 = plot_minority_class_gains(results["H7_per_class_breakdown"], figures_dir, dataset_name=dataset_name)
         fig_paths.append(p6)
 
     # 7. Figure 7: Overfitting & Underfitting Dynamics
     if "training_history" in results:
-        p7 = plot_overfitting_underfitting_dynamics(results["training_history"], figures_dir)
+        p7 = plot_overfitting_underfitting_dynamics(results["training_history"], figures_dir, dataset_name=dataset_name)
         fig_paths.append(p7)
 
     # 8. Figure 8: Multimodal Learning Curves Comparison
     if "multimodal_histories" in results:
-        p8 = plot_multimodal_learning_curves(results["multimodal_histories"], figures_dir)
+        p8 = plot_multimodal_learning_curves(results["multimodal_histories"], figures_dir, dataset_name=dataset_name)
         fig_paths.append(p8)
 
     return fig_paths

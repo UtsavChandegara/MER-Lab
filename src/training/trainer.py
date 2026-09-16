@@ -121,6 +121,7 @@ class Trainer:
         val_loss = total_loss / max(num_batches, 1)
         metrics = evaluate_predictions(all_targets, all_preds)
         metrics["loss"] = val_loss
+        metrics["val_loss"] = val_loss
         return metrics
 
     def fit(self, train_loader: DataLoader, val_loader: DataLoader, epochs: int) -> Dict[str, Any]:

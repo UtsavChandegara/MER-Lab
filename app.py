@@ -297,7 +297,7 @@ def _async_train_worker(req: TrainingRequest):
 
             # Evaluate Epoch
             eval_metrics = trainer.evaluate(val_loader)
-            val_loss = eval_metrics.get("val_loss", 0.0)
+            val_loss = eval_metrics.get("val_loss", eval_metrics.get("loss", 0.0))
             val_acc = eval_metrics.get("accuracy", 0.0)
             val_f1 = eval_metrics.get("weighted_f1", 0.0)
 
@@ -409,26 +409,29 @@ def predict_emotion(req: PredictionRequest):
         pred_idx = int(torch.argmax(logits, dim=-1).item())
 
     # Extract dynamic gating weights if using DGCA
-    gating_weights = {"text": 0.333, "audio": 0.333, "video": 0.333}
+    modality_keys = list(getattr(model, "encoders", {}).keys()) or ["text", "audio", "video"]
+    gating_weights = {m: round(1.0 / len(modality_keys), 4) for m in modality_keys}
     fusion_module = getattr(model, "fusion", None)
+
     if hasattr(fusion_module, "last_gating_weights") and fusion_module.last_gating_weights is not None:
-        last_gw = fusion_module.last_gating_weights.cpu().squeeze(0).squeeze(-1).tolist()
-        if len(last_gw) == 3:
+        last_gw = fusion_module.last_gating_weights.cpu().squeeze(0).squeeze(-1)
+        last_gw_list = [last_gw.item()] if last_gw.dim() == 0 else last_gw.tolist()
+        if len(last_gw_list) == len(modality_keys):
             gating_weights = {
-                "text": round(last_gw[0], 4),
-                "audio": round(last_gw[1], 4),
-                "video": round(last_gw[2], 4),
+                mod: round(float(last_gw_list[i]), 4)
+                for i, mod in enumerate(modality_keys)
             }
     else:
         # Heuristic fallback based on inputs
-        t_w = 0.40
-        a_w = 0.30 * (0.5 + req.audio_pitch_energy)
-        v_w = 0.30 * (0.5 + req.visual_affect_intensity)
-        tot = t_w + a_w + v_w
+        weights = {
+            "text": 0.40,
+            "audio": 0.30 * (0.5 + req.audio_pitch_energy),
+            "video": 0.30 * (0.5 + req.visual_affect_intensity),
+        }
+        tot = sum(weights.get(m, 1.0) for m in modality_keys)
         gating_weights = {
-            "text": round(t_w / tot, 4),
-            "audio": round(a_w / tot, 4),
-            "video": round(v_w / tot, 4),
+            m: round(weights.get(m, 1.0) / max(tot, 1e-6), 4)
+            for m in modality_keys
         }
 
     # Format class probabilities

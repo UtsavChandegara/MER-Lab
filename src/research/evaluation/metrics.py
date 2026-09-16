@@ -48,15 +48,25 @@ def evaluate_predictions(y_true: List[int], y_pred: List[int], class_names: Opti
     correct = sum(1 for gt, p in zip(y_true, y_pred) if gt == p)
     accuracy = correct / total if total > 0 else 0.0
 
-    # Determine unique classes
-    all_classes = sorted(list(set(y_true) | set(y_pred)))
-    max_c = max(all_classes) if all_classes else 0
-    matrix = [[0] * (max_c + 1) for _ in range(max_c + 1)]
+    # Determine classes and ensure matrix matches class_names if provided
+    if class_names:
+        num_classes = max(
+            len(class_names),
+            (max(y_true) + 1) if y_true else 0,
+            (max(y_pred) + 1) if y_pred else 0,
+        )
+        all_classes = list(range(num_classes))
+    else:
+        all_classes = sorted(list(set(y_true) | set(y_pred)))
+        num_classes = (max(all_classes) + 1) if all_classes else 0
+
+    matrix = [[0] * num_classes for _ in range(num_classes)]
     class_counts: Dict[int, int] = {}
 
     for gt, p in zip(y_true, y_pred):
-        matrix[gt][p] += 1
-        class_counts[gt] = class_counts.get(gt, 0) + 1
+        if gt < num_classes and p < num_classes:
+            matrix[gt][p] += 1
+            class_counts[gt] = class_counts.get(gt, 0) + 1
 
     per_class_metrics: Dict[str, Dict[str, Any]] = {}
     macro_f1_sum = 0.0
@@ -66,8 +76,8 @@ def evaluate_predictions(y_true: List[int], y_pred: List[int], class_names: Opti
     for c in all_classes:
         name = class_names[c] if class_names and c < len(class_names) else str(c)
         tp = matrix[c][c]
-        fp = sum(matrix[other][c] for other in range(max_c + 1) if other != c)
-        fn = sum(matrix[c][other] for other in range(max_c + 1) if other != c)
+        fp = sum(matrix[other][c] for other in range(num_classes) if other != c)
+        fn = sum(matrix[c][other] for other in range(num_classes) if other != c)
         support = class_counts.get(c, 0)
         total_tp += tp
 

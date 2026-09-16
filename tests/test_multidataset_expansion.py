@@ -109,5 +109,29 @@ class TestMultiDatasetExpansion(unittest.TestCase):
         self.assertEqual(logits.shape, (3, 6))
 
 
+    def test_benchmark_suite_h6_ablation_iemocap(self):
+        """Verifies that BenchmarkSuite runs H6 ablation on IEMOCAP (4 classes) without class dimension mismatch."""
+        from src.research.experiments.benchmark_runner import BenchmarkSuite
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            suite = BenchmarkSuite(base_config_path="configs/iemocap_trimodal.yaml", output_dir=tmpdir)
+            suite.base_config._data["training"]["epochs"] = 1
+            suite.base_config._data["dataset"]["num_samples"] = 20
+
+            # Run H6 Ablation Study (which includes Ablation 3: Linear Classifier)
+            h6_res = suite.run_h6_ablation_study()
+            self.assertIn("Full Proposed Model", h6_res)
+            self.assertIn("Ablation 3: Linear Classifier (No MLP)", h6_res)
+            self.assertGreater(h6_res["Ablation 3: Linear Classifier (No MLP)"]["accuracy"], 0.0)
+
+            # Run H7 Per-Class Breakdown
+            h7_res = suite.run_h7_per_class_breakdown()
+            self.assertEqual(len(h7_res), 4)
+            self.assertIn("neutral", h7_res)
+            self.assertIn("happy", h7_res)
+
+
 if __name__ == "__main__":
     unittest.main()

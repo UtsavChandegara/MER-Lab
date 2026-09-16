@@ -256,8 +256,10 @@ class BenchmarkSuite:
         """H2: Compare Proposed DGCA Fusion against Concatenation, Average, and Attention."""
         logger.info("================ EVALUATING H2: FUSION STRATEGIES ================")
         h2_results = {}
+        num_mods = len(self.base_config.get("dataset.modalities", ["text", "audio", "video"]))
+        proj_dim = self.base_config.get("model.fusion.projection_dim", 256)
         fusion_methods = {
-            "Concat Fusion": {"name": "concat_fusion", "num_modalities": 3},
+            "Concat Fusion": {"name": "concat_fusion", "num_modalities": num_mods},
             "Average Fusion": {"name": "average_fusion"},
             "Self-Attention Fusion": {"name": "attention_fusion", "num_heads": 4},
             "Proposed DGCA Fusion": {
@@ -271,7 +273,7 @@ class BenchmarkSuite:
         for fname, fcfg in fusion_methods.items():
             cfg_dict = copy.deepcopy(self.base_config.to_dict())
             cfg_dict["model"]["fusion"] = fcfg
-            cfg_dict["model"]["fusion"]["projection_dim"] = 256
+            cfg_dict["model"]["fusion"]["projection_dim"] = proj_dim
             metrics = self._train_and_eval(cfg_dict, f"H2_{fname}")
             h2_results[fname] = {
                 "accuracy": metrics["accuracy"],
@@ -319,9 +321,12 @@ class BenchmarkSuite:
             "Ablation 3: Linear Classifier (No MLP)": copy.deepcopy(self.base_config.to_dict()),
         }
 
+        proj_dim = self.base_config.get("model.fusion.projection_dim", 256)
+        num_classes = self.base_config.get("model.classifier.num_classes", len(self._get_dataset_emotions()))
+
         ablation_configs["Ablation 1: w/o Modality Dropout (p=0)"]["model"]["fusion"]["modality_dropout"] = 0.0
-        ablation_configs["Ablation 2: w/o Cross-Attention (Avg)"]["model"]["fusion"] = {"name": "average_fusion", "projection_dim": 256}
-        ablation_configs["Ablation 3: Linear Classifier (No MLP)"]["model"]["classifier"] = {"name": "linear_classifier", "num_classes": 7}
+        ablation_configs["Ablation 2: w/o Cross-Attention (Avg)"]["model"]["fusion"] = {"name": "average_fusion", "projection_dim": proj_dim}
+        ablation_configs["Ablation 3: Linear Classifier (No MLP)"]["model"]["classifier"] = {"name": "linear_classifier", "num_classes": num_classes}
 
         for aname, acfg in ablation_configs.items():
             metrics = self._train_and_eval(acfg, f"H6_{aname}")
@@ -351,14 +356,14 @@ class BenchmarkSuite:
 
         h7_results = {}
         for idx, emo in enumerate(emotions):
-            f1_text = metrics_text.get("per_class_f1", {}).get(str(idx), 0.0)
-            f1_tri = metrics_tri.get("per_class_f1", {}).get(str(idx), 0.0)
+            f1_text = metrics_text.get("per_class_f1", {}).get(str(idx), metrics_text.get("per_class_f1", {}).get(emo, 0.0))
+            f1_tri = metrics_tri.get("per_class_f1", {}).get(str(idx), metrics_tri.get("per_class_f1", {}).get(emo, 0.0))
             gain = f1_tri - f1_text
             h7_results[emo] = {
                 "class_id": idx,
                 "text_f1": f1_text,
                 "trimodal_f1": f1_tri,
-                "absolute_gain": gain,
+                "absolute_gain": round(gain, 4),
             }
 
         self.results["H7_per_class_breakdown"] = h7_results
@@ -374,13 +379,19 @@ class BenchmarkSuite:
         trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         total_params = sum(p.numel() for p in model.parameters())
 
-        # Dummy benchmark batch
+        # Dummy benchmark batch matching configured encoders
         batch_size = 1
-        dummy_inputs = {
-            "text": torch.randn(batch_size, 768, device=device),
-            "audio": torch.randn(batch_size, 768, device=device),
-            "video": torch.randn(batch_size, 512, device=device),
-        }
+        encoder_cfgs = self.base_config.get("model.encoder", {})
+        dummy_inputs = {}
+        for m, mcfg in encoder_cfgs.items():
+            dim = mcfg.get("native_dim", 768)
+            dummy_inputs[m] = torch.randn(batch_size, dim, device=device)
+        if not dummy_inputs:
+            dummy_inputs = {
+                "text": torch.randn(batch_size, 768, device=device),
+                "audio": torch.randn(batch_size, 768, device=device),
+                "video": torch.randn(batch_size, 512, device=device),
+            }
 
         # Warmup
         with torch.no_grad():

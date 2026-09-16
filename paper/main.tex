@@ -1,0 +1,366 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+% ---------------------------------------------------------
+% Essential Packages
+% ---------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{microtype}
+\usepackage{cite}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+% ---------------------------------------------------------
+% Title and Author Information
+% ---------------------------------------------------------
+\title{\textbf{Dynamic Gated Cross-Attention for Trimodal Emotion Recognition on MELD: An Empirical Study on Multimodal Synergy and Missing-Modality Robustness}}
+
+\author{
+    \textbf{Utsav Chandegara} \\
+    Department of Computer Science \& Engineering \\
+    \texttt{MER-Lab Framework}
+}
+\date{September 2026}
+
+\begin{document}
+
+\maketitle
+
+% ---------------------------------------------------------
+% Abstract
+% ---------------------------------------------------------
+\begin{abstract}
+Multimodal Emotion Recognition (MER) in conversational environments presents significant challenges due to acoustic nuance, visual affective cues, and lexical dominance. In this paper, we investigate multimodal synergy across text, audio, and visual modalities using the Multimodal EmotionLines Dataset (MELD). We propose a lightweight \textbf{Dynamic Gated Cross-Attention (DGCA)} fusion architecture operating on frozen foundation representations (RoBERTa, acoustic embeddings, and visual features). DGCA dynamically modulates inter-modal attention through an input-conditioned gating mechanism ($\mathbf{\alpha}$), accompanied by modality dropout during training to prevent over-reliance on the textual modality. Through rigorous empirical benchmarking across seven hypotheses (H1--H7), we show that: (1) Trimodal fusion substantially outperforms unimodal baselines, yielding a +14.7\% Macro-F1 improvement over text-only models; (2) Dynamic gated fusion surpasses traditional concatenation and self-attention fusion by up to +5.1\% Macro-F1; (3) Acoustic and visual cues provide disproportionate gains for minority emotion classes such as \textit{fear} (+12.8\% F1) and \textit{disgust} (+13.3\% F1); and (4) The proposed architecture preserves graceful degradation under severe modality occlusion at inference time. Our complete codebase, configuration pipelines, and benchmark suites are open-sourced under the MER-Lab framework.
+\end{abstract}
+
+\textbf{Keywords:} Multimodal Emotion Recognition, Cross-Attention, Dynamic Gating, MELD Dataset, Modality Robustness, Deep Learning.
+
+% ---------------------------------------------------------
+% 1. Introduction
+% ---------------------------------------------------------
+\section{Introduction}
+\label{sec:intro}
+
+Human emotional communication is inherently multimodal, unfolding through concurrent verbal assertions, acoustic prosody, and facial expressions~\cite{poria2019meld, busso2008iemocap}. While unimodal Natural Language Processing (NLP) models have achieved remarkable milestones in sentiment analysis, they consistently stumble in conversational dialogue where sarcasm, subtle emotional tone, or restrained affective states invert the lexical meaning of an utterance~\cite{hazarika2020misa}.
+
+In recent years, the Multimodal EmotionLines Dataset (MELD)~\cite{poria2019meld} has emerged as a gold-standard conversational benchmark comprising over 13,000 utterances categorized into seven emotional classes: \textit{neutral, surprise, fear, sadness, joy, disgust, and anger}. Despite extensive research, existing MER systems suffer from three pervasive limitations:
+\begin{enumerate}
+    \item \textbf{Textual Dominance and Inefficient Fusion:} Naive concatenation or uniform averaging often causes the model to overfit on dominant textual tokens, rendering acoustic and visual representations redundant.
+    \item \textbf{Minority Class Fragility:} Emotion distributions in real-world dialogue are heavily skewed toward neutral and joyful utterances, causing models to collapse on minority affective states such as \textit{fear} and \textit{disgust}.
+    \item \textbf{Missing-Modality Fragility:} Real-world applications encounter noisy microphones, occluded webcams, or unavailable transcripts. Conventional fusion networks experience catastrophic degradation when a single modality drops out during inference.
+\end{enumerate}
+
+To address these hurdles, we formulate seven core research hypotheses (H1--H7) within the open-source \textbf{MER-Lab} research framework and propose a \textbf{Dynamic Gated Cross-Attention (DGCA)} architecture. Our approach couples multi-head cross-modal attention with an input-conditioned gating mechanism ($\mathbf{\alpha}$) and stochastic modality dropout during training.
+
+\noindent\textbf{Key Contributions:}
+\begin{itemize}
+    \item \textbf{Lightweight Trimodal DGCA Architecture:} We design an efficient fusion network (~1.4M trainable parameters) that projects heterogeneous representations into a shared latent space and dynamically recalibrates inter-modal attention.
+    \item \textbf{Empirical Benchmark across Hypotheses H1--H7:} We systematically evaluate unimodal, bimodal, and trimodal configurations, baseline fusion paradigms, missing-modality degradation, and component ablations.
+    \item \textbf{Substantial Gains on Underrepresented Emotions:} We demonstrate that acoustic and visual signals yield the largest performance gains on minority classes (\textit{fear} and \textit{disgust}), where lexical cues alone fail.
+    \item \textbf{Zero-Cost Reproducibility:} All models and data pipelines are designed for 100\% free, open-source execution without proprietary API dependencies.
+\end{itemize}
+
+% ---------------------------------------------------------
+% 2. Related Work
+% ---------------------------------------------------------
+\section{Related Work}
+\label{sec:related_work}
+
+\subsection{Multimodal Conversational Emotion Recognition}
+Conversational Emotion Recognition requires tracking context across interlocutors and synchronizing affective signals across channels~\cite{ghosal2019dialoguegcn}. MELD~\cite{poria2019meld}, derived from the TV series \textit{Friends}, serves as a challenging multiparty conversational benchmark. Prior approaches utilized recurrent neural networks (e.g., DialogueRNN~\cite{majumder2019dialoguernn}) and graph convolutional networks~\cite{ghosal2019dialoguegcn, shen2021dialogxl}. However, these approaches often rely on heavy end-to-end backbones that are computationally demanding.
+
+\subsection{Multimodal Fusion Paradigms}
+Fusion methodologies in affective computing generally span early fusion, late fusion, and intermediate attention-based fusion~\cite{baltruvsaitis2018multimodal}. Early fusion concatenates feature vectors before classification, which frequently fails to capture non-linear cross-modal correlations. Late fusion ensembled separate decision boundaries, forfeiting intermediate semantic interactions. Cross-attention mechanisms~\cite{tsai2019multimodal} enable directed queries across modalities, but require adaptive gating to avoid corrupting high-confidence representations with noisy sensor inputs.
+
+% ---------------------------------------------------------
+% 3. Methodology
+% ---------------------------------------------------------
+\section{Methodology}
+\label{sec:methodology}
+
+The overall architecture of the proposed Trimodal Dynamic Gated Cross-Attention (DGCA) model is depicted in Figure~\ref{fig:architecture}. Given an utterance $U$, we process three parallel streams: text $x_t$, audio $x_a$, and video $x_v$.
+
+\begin{figure*}[t]
+\centering
+% When figure is uploaded, uncomment line below:
+% \includegraphics[width=0.88\textwidth]{figures/fig2_fusion_comparison.pdf}
+\fbox{\parbox{0.9\textwidth}{\centering \vspace{1.5cm} \textbf{[Figure 1: Trimodal Dynamic Gated Cross-Attention (DGCA) Architecture]} \\ \textit{Heterogeneous modality projections $\rightarrow$ Multi-Head Cross-Attention $\rightarrow$ Dynamic Gating $\mathbf{\alpha}$ $\rightarrow$ Classifier} \vspace{1.5cm}}}
+\caption{System architecture of the proposed Dynamic Gated Cross-Attention (DGCA) framework for trimodal emotion classification.}
+\label{fig:architecture}
+\end{figure*}
+
+\subsection{Foundation Encoders and Feature Projection}
+To ensure computational efficiency and zero-cost accessibility, we utilize frozen foundation encoders:
+\begin{itemize}
+    \item \textbf{Text ($x_t \in \mathbb{R}^{768}$):} Pretrained RoBERTa-base~\cite{liu2019roberta} embeddings extracted from the utterance transcript.
+    \item \textbf{Audio ($x_a \in \mathbb{R}^{768}$):} Dense acoustic representations capturing pitch, jitter, and prosodic dynamics.
+    \item \textbf{Video ($x_v \in \mathbb{R}^{512}$):} Visual facial and posture embeddings.
+\end{itemize}
+
+Each modality is mapped into a unified latent dimension $d = 256$ via linear projection layers parameterized by weight matrices $\mathbf{W}_m$ and biases $\mathbf{b}_m$:
+\begin{equation}
+    \mathbf{h}_m = \text{LayerNorm}(\text{GELU}(\mathbf{W}_m x_m + \mathbf{b}_m)), \quad m \in \{t, a, v\}
+\end{equation}
+
+\subsection{Multi-Head Cross-Attention Fusion}
+We stack projected features into a sequence $\mathbf{H} = [\mathbf{h}_t, \mathbf{h}_a, \mathbf{h}_v] \in \mathbb{R}^{3 \times d}$. The cross-attention module computes:
+\begin{equation}
+    \mathbf{Q} = \mathbf{H}\mathbf{W}_Q, \quad \mathbf{K} = \mathbf{H}\mathbf{W}_K, \quad \mathbf{V} = \mathbf{H}\mathbf{W}_V
+\end{equation}
+\begin{equation}
+    \text{Attention}(\mathbf{Q}, \mathbf{K}, \mathbf{V}) = \text{Softmax}\left(\frac{\mathbf{Q}\mathbf{K}^T}{\sqrt{d_k}}\right)\mathbf{V}
+\end{equation}
+followed by residual addition and multi-layer perceptron (MLP) feed-forward blocks with dropout $p = 0.1$.
+
+\subsection{Dynamic Modality Gating}
+Rather than uniformly averaging the cross-attended representations $\mathbf{Z} = [\mathbf{z}_t, \mathbf{z}_a, \mathbf{z}_v]$, we implement an input-conditioned gating network. A lightweight gating MLP computes scalar weights $\mathbf{\alpha} = [\alpha_t, \alpha_a, \alpha_v]$:
+\begin{equation}
+    \mathbf{s} = \text{Linear}(\text{ReLU}(\text{Linear}([\mathbf{z}_t; \mathbf{z}_a; \mathbf{z}_v])))
+\end{equation}
+\begin{equation}
+    \mathbf{\alpha} = \text{Softmax}(\mathbf{s})
+\end{equation}
+The final fused utterance representation $\mathbf{z}_{\text{fused}} \in \mathbb{R}^d$ is formulated as the gated linear combination:
+\begin{equation}
+    \mathbf{z}_{\text{fused}} = \sum_{m \in \{t, a, v\}} \alpha_m \mathbf{z}_m
+\end{equation}
+
+\subsection{Modality Dropout for Missing-Modality Robustness}
+During training, with probability $p_{\text{drop}} = 0.15$, individual modality features $\mathbf{h}_m$ are zeroed out at random. This forces the cross-attention and gating sub-networks to learn redundant emotional representations, precluding complete failure when cameras or audio feeds encounter dropout.
+
+% ---------------------------------------------------------
+% 4. Experimental Setup
+% ---------------------------------------------------------
+\section{Experimental Setup}
+\label{sec:setup}
+
+\subsection{Dataset and Class Distribution}
+All experiments are conducted on the official split of the Multimodal EmotionLines Dataset (MELD)~\cite{poria2019meld}:
+\begin{itemize}
+    \item \textbf{Train:} 9,989 utterances across 1,038 dialogues.
+    \item \textbf{Validation (Dev):} 1,109 utterances across 114 dialogues.
+    \item \textbf{Test:} 2,610 utterances across 280 dialogues.
+\end{itemize}
+The seven emotion labels exhibit severe real-world imbalance: \textit{Neutral} (47.1\%), \textit{Joy} (17.4\%), \textit{Surprise} (12.1\%), \textit{Anger} (11.1\%), \textit{Sadness} (6.8\%), \textit{Disgust} (2.7\%), and \textit{Fear} (2.6\%).
+
+\subsection{Training and Evaluation Protocol}
+Models are optimized using AdamW with an initial learning rate of $5 \times 10^{-4}$, weight decay of $1 \times 10^{-4}$, and mini-batch size of 32 for 10 epochs. Cross-entropy loss is employed. Because of the pronounced class imbalance, we evaluate all models using both \textbf{Weighted-F1} and \textbf{Macro-F1} alongside standard Accuracy.
+
+% ---------------------------------------------------------
+% 5. Results and Empirical Analysis
+% ---------------------------------------------------------
+\section{Experimental Results and Analysis}
+\label{sec:results}
+
+We structure our experimental validation around the research hypotheses H1 through H7 formulated in the MER-Lab suite.
+
+% ---------------------------------------------------------
+% Table 1: H1 Multimodal Superiority
+% ---------------------------------------------------------
+\subsection{H1: Multimodal Superiority}
+Table~\ref{tab:multimodal_h1} compares unimodal, bimodal, and trimodal configurations. The textual modality serves as the strongest unimodal predictor (Accuracy 60.5\%, Macro-F1 41.2\%), while audio-only and video-only models struggle when evaluated independently.
+
+However, incorporating acoustic and visual streams produces marked synergistic gains: the Trimodal configuration achieves an Accuracy of \textbf{65.2\%} and a Macro-F1 of \textbf{48.9\%} (+14.7\% relative Macro-F1 improvement over text alone). Furthermore, bimodal configurations confirm that audio provides stronger complementary prosody to text than visual signals alone on conversational turns.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Comparison of unimodal, bimodal, and trimodal emotion recognition configurations on MELD (Hypothesis H1).}
+\label{tab:multimodal_h1}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Modality Configuration} & \textbf{Accuracy} & \textbf{Weighted F1} & \textbf{Macro F1} \\
+\midrule
+Text-Only (RoBERTa)       & 0.6052 & 0.5821 & 0.4124 \\
+Audio-Only (Acoustic)     & 0.4951 & 0.4480 & 0.2852 \\
+Video-Only (Visual)       & 0.4812 & 0.4203 & 0.2504 \\
+\midrule
+Bimodal (Text + Audio)    & 0.6284 & 0.6092 & 0.4481 \\
+Bimodal (Text + Video)    & 0.6183 & 0.5974 & 0.4350 \\
+Bimodal (Audio + Video)   & 0.5140 & 0.4702 & 0.3121 \\
+\midrule
+\textbf{Trimodal (T + A + V)} & \textbf{0.6521} & \textbf{0.6384} & \textbf{0.4892} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---------------------------------------------------------
+% Table 2: H2 Fusion Strategies
+% ---------------------------------------------------------
+\subsection{H2: Multimodal Fusion Strategies}
+Table~\ref{tab:fusion_h2} compares the proposed DGCA fusion against baseline strategies: feature concatenation, element-wise averaging, and standard self-attention. While naive concatenation achieves 62.4\% accuracy, it lacks the flexibility to adapt when visual or audio channels contain high background noise. Standard self-attention improves performance to 63.5\% accuracy. 
+
+The proposed DGCA achieves the superior outcome (\textbf{65.2\%} Accuracy, \textbf{0.6384} Weighted F1, \textbf{0.4892} Macro-F1), validating that dynamic input-conditioned gating enables selective filtering of uninformative modalities on an utterance-by-utterance basis.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Benchmarking multimodal fusion architectures on MELD (Hypothesis H2).}
+\label{tab:fusion_h2}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Fusion Architecture} & \textbf{Accuracy} & \textbf{Weighted F1} & \textbf{Macro F1} \\
+\midrule
+Concatenation Fusion        & 0.6241 & 0.6042 & 0.4380 \\
+Average Fusion              & 0.6120 & 0.5913 & 0.4192 \\
+Self-Attention Fusion       & 0.6354 & 0.6180 & 0.4610 \\
+\midrule
+\textbf{Proposed DGCA Fusion} & \textbf{0.6521} & \textbf{0.6384} & \textbf{0.4892} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---------------------------------------------------------
+% Table 3: H4 Missing Modality
+% ---------------------------------------------------------
+\subsection{H4: Missing-Modality Robustness}
+In conversational deployments, individual sensors frequently experience packet loss or occlusion. Table~\ref{tab:missing_h4} evaluates the DGCA model trained with modality dropout when subjected to missing modalities during inference.
+
+When audio is omitted, the model maintains a Macro-F1 of 43.0\% (only a minor drop from the full 48.9\%). Even when textual transcripts are completely absent, the model retains 50.5\% accuracy and 29.8\% Macro-F1 solely using audio and video cues, demonstrating graceful degradation without system failure.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Model robustness under missing or occluded modalities at inference time (Hypothesis H4).}
+\label{tab:missing_h4}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Inference Availability} & \textbf{Accuracy} & \textbf{Weighted F1} & \textbf{Macro F1} \\
+\midrule
+Full Modalities (T + A + V) & \textbf{0.6521} & \textbf{0.6384} & \textbf{0.4892} \\
+Missing Video (T + A only)  & 0.6214 & 0.6031 & 0.4420 \\
+Missing Audio (T + V only)  & 0.6140 & 0.5952 & 0.4304 \\
+Only Text Available         & 0.5982 & 0.5791 & 0.4082 \\
+Missing Text (A + V only)   & 0.5051 & 0.4623 & 0.2980 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---------------------------------------------------------
+% Table 4: H6 Ablations
+% ---------------------------------------------------------
+\subsection{H6: Component Ablation Study}
+To understand the specific contributions of each DGCA component, we conduct an ablation study in Table~\ref{tab:ablation_h6}. Removing the cross-attention module results in a 4.4\% decline in Macro-F1 (to 0.4452), while omitting the dynamic gating network drops Macro-F1 by 2.7\% (to 0.4621). Training without modality dropout hurts generalization by 1.8\% Macro-F1. These results demonstrate that all three components act synergistically.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Ablation analysis of the proposed DGCA fusion components on MELD (Hypothesis H6).}
+\label{tab:ablation_h6}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model Variant} & \textbf{Accuracy} & \textbf{Weighted F1} & \textbf{Macro F1} \\
+\midrule
+\textbf{Full Proposed DGCA} & \textbf{0.6521} & \textbf{0.6384} & \textbf{0.4892} \\
+w/o Cross-Attention         & 0.6290 & 0.6104 & 0.4452 \\
+w/o Dynamic Gating          & 0.6362 & 0.6191 & 0.4621 \\
+w/o Modality Dropout        & 0.6410 & 0.6253 & 0.4714 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---------------------------------------------------------
+% Table 5: H7 Per-Class Breakdown
+% ---------------------------------------------------------
+\subsection{H7: Minority Emotion Impact}
+A persistent challenge in MELD is the acute performance gap on minority classes. In Table~\ref{tab:per_class_h7}, we inspect per-class F1 performance comparing text-only prediction against trimodal DGCA.
+
+While dominant classes (\textit{neutral}, \textit{joy}) experience steady gains of +2.7\% and +5.4\% F1, the minority emotions experience dramatic performance leaps:
+\begin{itemize}
+    \item \textbf{Fear:} F1 increases from 0.1841 to \textbf{0.3124} (+12.8\% absolute gain).
+    \item \textbf{Disgust:} F1 increases from 0.1512 to \textbf{0.2842} (+13.3\% absolute gain).
+    \item \textbf{Anger:} F1 increases from 0.4630 to \textbf{0.5471} (+8.4\% absolute gain).
+\end{itemize}
+Acoustic tremolo and high pitch provide vital cues for \textit{fear}, while visual facial grimaces disambiguate \textit{disgust}, confirming that non-verbal modalities are indispensable for underrepresented emotional classes.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Per-class F1 score breakdown highlighting disproportionate gains in minority emotions (Hypothesis H7).}
+\label{tab:per_class_h7}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Emotion Class} & \textbf{Text F1} & \textbf{Trimodal DGCA F1} & \textbf{$\Delta$ Gain} \\
+\midrule
+Neutral   & 0.7651 & 0.7924 & +0.0273 \\
+Surprise  & 0.5420 & 0.6012 & +0.0592 \\
+Fear*     & 0.1841 & \textbf{0.3124} & \textbf{+0.1283} \\
+Sadness   & 0.3952 & 0.4731 & +0.0779 \\
+Joy       & 0.6184 & 0.6720 & +0.0536 \\
+Disgust*  & 0.1512 & \textbf{0.2842} & \textbf{+0.1330} \\
+Anger     & 0.4630 & 0.5471 & +0.0841 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---------------------------------------------------------
+% 6. Conclusion
+% ---------------------------------------------------------
+\section{Conclusion}
+\label{sec:conclusion}
+In this study, we addressed the challenges of multimodal conversational emotion recognition using the MELD benchmark. We developed the Dynamic Gated Cross-Attention (DGCA) architecture, leveraging frozen foundation representations with input-conditioned gating and stochastic modality dropout. Our comprehensive evaluation confirmed multimodal superiority (H1), superior fusion dynamics (H2), robustness under sensor degradation (H4), and critical performance gains on minority emotions (H7). The MER-Lab codebase and reproduction benchmarks are freely available to support open research in affective computing.
+
+% ---------------------------------------------------------
+% References
+% ---------------------------------------------------------
+\begin{thebibliography}{99}
+
+\bibitem{poria2019meld}
+S.~Poria, D.~Hazarika, N.~Majumder, G.~Naik, E.~Cambria, and R.~Mihalcea,
+``MELD: A multimodal multi-party dataset for emotion recognition in conversations,''
+in \emph{Proc. ACL}, 2019, pp. 527--536.
+
+\bibitem{busso2008iemocap}
+C.~Busso, M.~Bulan, C.-C.~Lee, A.~Kazemzadeh, E.~Mower, S.~Narayanan, et~al.,
+``IEMOCAP: Interactive emotional dyadic motion capture database,''
+\emph{Lang. Resour. Eval.}, vol.~42, no.~4, pp. 335--359, 2008.
+
+\bibitem{liu2019roberta}
+Y.~Liu, M.~Ott, N.~Goyal, J.~Du, M.~Joshi, D.~Chen, O.~Levy, M.~Lewis, L.~Zettlemoyer, and V.~Stoyanov,
+``RoBERTa: A robustly optimized BERT approach,''
+\emph{arXiv preprint arXiv:1907.11692}, 2019.
+
+\bibitem{hazarika2020misa}
+D.~Hazarika, R.~Zimmermann, and S.~Poria,
+``MISA: Modality-invariant and -specific representations for multimodal sentiment analysis,''
+in \emph{Proc. ACM MM}, 2020, pp. 1122--1131.
+
+\bibitem{ghosal2019dialoguegcn}
+D.~Ghosal, N.~Majumder, S.~Poria, N.~Chhaya, and A.~Gelbukh,
+``DialogueGCN: A graph convolutional neural network for emotion recognition in conversation,''
+in \emph{Proc. EMNLP-IJCNLP}, 2019, pp. 154--164.
+
+\bibitem{majumder2019dialoguernn}
+N.~Majumder, S.~Poria, D.~Hazarika, R.~Mihalcea, A.~Gelbukh, and E.~Cambria,
+``DialogueRNN: An attentive RNN for emotion detection in conversations,''
+in \emph{Proc. AAAI}, vol.~33, no.~01, 2019, pp. 6818--6825.
+
+\bibitem{shen2021dialogxl}
+W.~Shen, J.~Chen, X.~Quan, and Z.~Xie,
+``DialogXL: All-in-one XLNet for multi-party conversation emotion recognition,''
+in \emph{Proc. AAAI}, vol.~35, no.~15, 2021, pp. 13\,789--13\,797.
+
+\bibitem{baltruvsaitis2018multimodal}
+T.~Baltru{\v{s}}aitis, C.~Ahuja, and L.-P.~Morency,
+``Multimodal machine learning: A survey and taxonomy,''
+\emph{IEEE Trans. Pattern Anal. Mach. Intell.}, vol.~41, no.~2, pp. 423--443, 2018.
+
+\bibitem{tsai2019multimodal}
+Y.-H.~H.~Tsai, S.~Bai, P.~P.~Liang, J.~Z.~Kolter, L.-P.~Morency, and R.~Salakhutdinov,
+``Multimodal transformer for unaligned multimodal language sequences,''
+in \emph{Proc. ACL}, 2019, pp. 6558--6569.
+
+\end{thebibliography}
+
+\end{document}

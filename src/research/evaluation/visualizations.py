@@ -34,7 +34,7 @@ def _setup_plot_style():
     })
 
 
-def plot_multimodal_superiority(h1_results: Dict[str, Dict[str, float]], save_dir: Path) -> Path:
+def plot_multimodal_superiority(h1_results: Dict[str, Dict[str, float]], save_dir: Path, dataset_name: str = "MELD") -> Path:
     """Figure 1: Multimodal Superiority (H1). Grouped bar chart for Unimodal vs Bimodal vs Trimodal."""
     _setup_plot_style()
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -58,7 +58,7 @@ def plot_multimodal_superiority(h1_results: Dict[str, Dict[str, float]], save_di
         rects2[-1].set_linewidth(1.5)
 
     ax.set_ylabel("Score")
-    ax.set_title("H1: Emotion Recognition Across Modality Configurations on MELD", fontweight="bold", pad=12)
+    ax.set_title(f"H1: Emotion Recognition Across Modality Configurations on {dataset_name}", fontweight="bold", pad=12)
     ax.set_xticks(x)
     ax.set_xticklabels(conditions, rotation=25, ha="right")
     ax.set_ylim(0.0, 1.05)
@@ -78,7 +78,7 @@ def plot_multimodal_superiority(h1_results: Dict[str, Dict[str, float]], save_di
     return out_path
 
 
-def plot_fusion_comparison(h2_results: Dict[str, Dict[str, float]], save_dir: Path) -> Path:
+def plot_fusion_comparison(h2_results: Dict[str, Dict[str, float]], save_dir: Path, dataset_name: str = "MELD") -> Path:
     """Figure 2: Multimodal Fusion Comparison (H2)."""
     _setup_plot_style()
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -98,7 +98,7 @@ def plot_fusion_comparison(h2_results: Dict[str, Dict[str, float]], save_dir: Pa
     ax.bar(x + width / 2, weighted_f1s, width, label="Weighted-F1", color=colors_wf1)
 
     ax.set_ylabel("F1 Score")
-    ax.set_title("H2: Benchmarking Multimodal Fusion Strategies on MELD", fontweight="bold", pad=12)
+    ax.set_title(f"H2: Benchmarking Multimodal Fusion Strategies on {dataset_name}", fontweight="bold", pad=12)
     ax.set_xticks(x)
     ax.set_xticklabels(methods, rotation=15, ha="right")
     ax.set_ylim(0.0, 1.05)
@@ -189,7 +189,7 @@ def plot_missing_modality_robustness(h4_results: Dict[str, Dict[str, float]], sa
     return out_path
 
 
-def plot_confusion_matrix_heatmap(matrix: List[List[int]], class_names: List[str], save_dir: Path) -> Path:
+def plot_confusion_matrix_heatmap(matrix: List[List[int]], class_names: List[str], save_dir: Path, dataset_name: str = "MELD") -> Path:
     """Figure 5: Normalized Confusion Matrix Heatmap (Tier 1 & 2)."""
     _setup_plot_style()
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -211,7 +211,7 @@ def plot_confusion_matrix_heatmap(matrix: List[List[int]], class_names: List[str
 
     ax.set_xlabel("Predicted Emotion Label", fontweight="bold", labelpad=8)
     ax.set_ylabel("Ground Truth Emotion Label", fontweight="bold", labelpad=8)
-    ax.set_title("Trimodal DGCA Confusion Matrix on MELD", fontweight="bold", pad=12)
+    ax.set_title(f"Trimodal DGCA Confusion Matrix on {dataset_name}", fontweight="bold", pad=12)
 
     # Print annotations
     for i in range(len(class_names)):
@@ -365,7 +365,7 @@ def plot_multimodal_learning_curves(histories: Dict[str, Dict[str, Any]], save_d
     return out_path
 
 
-def render_all_figures(results: Dict[str, Any], save_dir: Path) -> List[Path]:
+def render_all_figures(results: Dict[str, Any], save_dir: Path, dataset_name: str = "MELD") -> List[Path]:
     """Generates all publication figures from the experiment results dictionary."""
     fig_paths = []
     figures_dir = save_dir / "figures"
@@ -373,12 +373,12 @@ def render_all_figures(results: Dict[str, Any], save_dir: Path) -> List[Path]:
 
     # 1. H1 Multimodal Superiority
     if "H1_multimodal_superiority" in results:
-        p1 = plot_multimodal_superiority(results["H1_multimodal_superiority"], figures_dir)
+        p1 = plot_multimodal_superiority(results["H1_multimodal_superiority"], figures_dir, dataset_name=dataset_name)
         fig_paths.append(p1)
 
     # 2. H2 Fusion Strategies
     if "H2_fusion_comparison" in results:
-        p2 = plot_fusion_comparison(results["H2_fusion_comparison"], figures_dir)
+        p2 = plot_fusion_comparison(results["H2_fusion_comparison"], figures_dir, dataset_name=dataset_name)
         fig_paths.append(p2)
 
     # 3. H3 Dynamic Gating (if gating data present)
@@ -394,7 +394,7 @@ def render_all_figures(results: Dict[str, Any], save_dir: Path) -> List[Path]:
     # 5. Confusion Matrix (Figure 5)
     if "confusion_matrix" in results:
         class_names = results.get("class_names", ["neutral", "surprise", "fear", "sadness", "joy", "disgust", "anger"])
-        p5 = plot_confusion_matrix_heatmap(results["confusion_matrix"], class_names, figures_dir)
+        p5 = plot_confusion_matrix_heatmap(results["confusion_matrix"], class_names, figures_dir, dataset_name=dataset_name)
         fig_paths.append(p5)
 
     # 6. H7 Minority Class Analysis

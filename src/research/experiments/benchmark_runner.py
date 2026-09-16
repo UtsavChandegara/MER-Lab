@@ -431,6 +431,9 @@ class BenchmarkSuite:
         latex_dir = self.output_dir / "latex_tables"
         latex_dir.mkdir(parents=True, exist_ok=True)
 
+        ds_raw = self.base_config.get("dataset.name", "meld_features").replace("_features", "").upper()
+        ds_name = "CMU-MOSEI" if ds_raw == "MOSEI" else ds_raw
+
         # Table 1: H1 Multimodal Superiority
         if "H1_multimodal_superiority" in self.results:
             with open(latex_dir / "table1_multimodal_h1.tex", "w") as f:
@@ -441,7 +444,7 @@ class BenchmarkSuite:
                 for mod, met in self.results["H1_multimodal_superiority"].items():
                     f.write(f"{mod} & {met['accuracy']:.4f} & {met['weighted_f1']:.4f} & {met['macro_f1']:.4f} \\\\\n")
                 f.write("\\hline\n\\end{tabular}\n")
-                f.write("\\caption{Comparison of unimodal, bimodal, and trimodal emotion recognition on MELD (H1).}\n")
+                f.write(f"\\caption{{Comparison of unimodal, bimodal, and trimodal emotion recognition on {ds_name} (H1).}}\n")
                 f.write("\\label{tab:multimodal_h1}\n\\end{table}\n")
 
         # Table 2: H2 Fusion Strategies
@@ -456,7 +459,7 @@ class BenchmarkSuite:
                     endb = "}" if "Proposed" in fn else ""
                     f.write(f"{bold}{fn}{endb} & {bold}{met['accuracy']:.4f}{endb} & {bold}{met['weighted_f1']:.4f}{endb} & {bold}{met['macro_f1']:.4f}{endb} \\\\\n")
                 f.write("\\hline\n\\end{tabular}\n")
-                f.write("\\caption{Benchmarking multimodal fusion architectures on MELD (H2).}\n")
+                f.write(f"\\caption{{Benchmarking multimodal fusion architectures on {ds_name} (H2).}}\n")
                 f.write("\\label{tab:fusion_h2}\n\\end{table}\n")
 
         # Table 3: H4 Missing Modality
@@ -525,7 +528,7 @@ class BenchmarkSuite:
             f.write("``I cannot eat this food.'' & Disgust & Neutral & Disgust & 0.20 / 0.28 / 0.52 & Facial grimace and lip curl visual representations resolve disgust. \\\\\n")
             f.write("``Yes, I will be attending.'' & Neutral & Neutral & Neutral & 0.68 / 0.18 / 0.14 & Factual turn where lexical content dominates over neutral tone. \\\\\n")
             f.write("\\hline\n\\end{tabular}\n")
-            f.write("\\caption{Qualitative conversational case studies demonstrating multimodal disambiguation on MELD.}\n")
+            f.write(f"\\caption{{Qualitative conversational case studies demonstrating multimodal disambiguation on {ds_name}.}}\n")
             f.write("\\label{tab:case_studies}\n\\end{table*}\n")
 
         logger.info(f"Successfully generated all LaTeX publication tables in '{latex_dir}'.")
@@ -552,7 +555,9 @@ class BenchmarkSuite:
         # Generate Publication-Ready Figures (PNG & PDF at 300 DPI)
         try:
             from src.research.evaluation.visualizations import render_all_figures
-            render_all_figures(self.results, self.output_dir)
+            ds_raw = self.base_config.get("dataset.name", "meld_features").replace("_features", "").upper()
+            ds_name = "CMU-MOSEI" if ds_raw == "MOSEI" else ds_raw
+            render_all_figures(self.results, self.output_dir, dataset_name=ds_name)
             logger.info(f"Saved all 300-DPI publication figures to '{self.output_dir / 'figures'}'.")
         except Exception as e:
             logger.warning(f"Figure generation skipped due to error: {str(e)}")
